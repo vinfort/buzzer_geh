@@ -70,7 +70,8 @@ const int durationSpeaker = 500; // milliseconds
 
 // Assign a pin number to the potentiometer used to determine the delay after a buzz before reset
 // and define maximum delay
-const int pinDelay = 0;
+
+const int pinDelay = 2;
 const unsigned long delayResetMax = 5000; // maximum delay in milliseconds (scaled by potentiometer read)
 
 /*
@@ -117,11 +118,11 @@ struct Button buzzers[numTeams][numPlayers] = {
   {
     {31,45,LOW,LOW,0},
     {33,43,LOW,LOW,0},
-    {35,39,LOW,LOW,0},
-    {37,41,LOW,LOW,0}
+    {35,41,LOW,LOW,0},
+    {37,39,LOW,LOW,0}
   }
 };
-struct Button whiteButton = {7,8,LOW,LOW,0};
+struct Button whiteButton = {7,5,LOW,LOW,0};
 static int pinGreenLED; // will be set to the pinLED attribute of the white button
 
 // Initial setup
