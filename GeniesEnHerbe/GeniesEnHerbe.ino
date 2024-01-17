@@ -88,7 +88,7 @@ const unsigned long startupDelay = 35000; // milliseconds
  */
 
 // Debounce delay to filter out flickers of button states
-const unsigned long debounceDelay = 500;    // the debounce time for buttons in milliseconds
+const unsigned long debounceDelay = 50;    // the debounce time for buttons in milliseconds
 
 /* 
  * Attributes associated with each button / buzzer
@@ -183,7 +183,7 @@ void loop() {
   someoneBuzzed = false;
   for (team=0; team<numTeams; team++) {
     for (player=0; player<numPlayers; player++) {
-      if (readButtonState(buzzers[team][player]) == HIGH) {
+      if (readButtonState(buzzers[team][player]) == LOW) {
         // A buzzer is activated: set the flag, keep track of which buzzer is activated and exit inner loop
         someoneBuzzed = true;
         teamBuzz = team;
@@ -219,7 +219,7 @@ void loop() {
     timestamp = millis();
     while ((delayReset < 0) || millis() - timestamp < delayReset) {
       // The delay has not ended: check if white button is pushed by the referee
-      if (readButtonState(whiteButton) == HIGH) {
+      if (readButtonState(whiteButton) == LOW) {
         // White button is pushed: reset the quiz machine before the end of the delay
         break;
       }  
