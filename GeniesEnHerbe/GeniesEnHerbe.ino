@@ -110,17 +110,17 @@ struct Button {
 // Define each button by their pin numbers (for the button and the LED) and initial state
 struct Button buzzers[numTeams][numPlayers] = {
   {
-    {23,53,LOW,LOW,0},
-    {25,51,LOW,LOW,0},
-    {27,49,LOW,LOW,0},
-    {29,47,LOW,LOW,0}
+    {31,53,LOW,LOW,0},
+    {33,51,LOW,LOW,0},
+    {35,49,LOW,LOW,0},
+    {37,47,LOW,LOW,0}
   }
   ,
   {
-    {31,45,LOW,LOW,0},
-    {33,43,LOW,LOW,0},
-    {35,41,LOW,LOW,0},
-    {37,39,LOW,LOW,0}
+    {23,45,LOW,LOW,0},
+    {25,43,LOW,LOW,0},
+    {27,41,LOW,LOW,0},
+    {29,39,LOW,LOW,0}
   }
 };
 struct Button whiteButton = {7,5,LOW,LOW,0};
@@ -241,7 +241,7 @@ void loop() {
   someoneBuzzed = false;
   for (team=0; team<numTeams; team++) {
     for (player=0; player<numPlayers; player++) {
-      if (readButtonState(buzzers[team][player]) == HIGH) {
+      if (readButtonState(buzzers[team][player]) == LOW) {
         // A buzzer is activated: set the flag, keep track of which buzzer is activated and exit inner loop
         someoneBuzzed = true;
         teamBuzz = team;
@@ -293,7 +293,7 @@ void loop() {
     timestamp = millis();
     while ((delayReset < 0) || millis() - timestamp < delayReset) {
       // The delay has not ended: check if white button is pushed by the referee
-      if (readButtonState(whiteButton) == HIGH) {
+      if (readButtonState(whiteButton) == LOW) {
         // White button is pushed: reset the quiz machine before the end of the delay
         break;
       }  
