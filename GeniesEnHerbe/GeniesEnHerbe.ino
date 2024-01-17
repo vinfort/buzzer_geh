@@ -55,7 +55,7 @@
 // Configure the number of teams and number of players per team
 // Normally there are two teams and four players per team
 const int numTeams = 2;
-const int numPlayers = 4; // 4 players per team for the prototype
+const int numPlayers = 1; // 1 players per team for the prototype
 
 /*
  * Speaker
@@ -109,7 +109,7 @@ struct Button {
  */
 
 // Define each button by their pin numbers (for the button and the LED) and initial state
-struct Button buzzers[numTeams][numPlayers] = {
+/*struct Button buzzers[numTeams][numPlayers] = {
   {
     {23,53,LOW,LOW,0},
     {25,51,LOW,LOW,0},
@@ -123,7 +123,17 @@ struct Button buzzers[numTeams][numPlayers] = {
     {35,41,LOW,LOW,0},
     {37,39,LOW,LOW,0}
   }
+};*/
+struct Button buzzers[numTeams][numPlayers] = {
+  {
+    {9,10,LOW,LOW,0}
+  }
+  ,
+  {
+    {11,12,LOW,LOW,0}
+  }
 };
+
 struct Button whiteButton = {7,5,LOW,LOW,0};
 static int pinGreenLED; // will be set to the pinLED attribute of the white button
 
