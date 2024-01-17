@@ -60,7 +60,8 @@ const int numPlayers = 4; // 4 players per team for the prototype
  */
 
 // Assign a pin number to the speaker and configure the sound
-const int pinSpeaker = 6;
+const int pinSpeaker = 11;
+const int pinSpeaker2 = 12;
 const int frequencySpeaker = 440; // Hz
 const int durationSpeaker = 500; // milliseconds
 
@@ -127,6 +128,7 @@ static int pinGreenLED; // will be set to the pinLED attribute of the white butt
 //LCD demo code
 #include<Wire.h>
 #include<LiquidCrystal_I2C.h>
+#include<toneAC.h>
 LiquidCrystal_I2C lcd(0x27,20,4); //set the LCD address to 0x27 for a 16 chars and 2 line display
 
 byte customChar[8] = {
@@ -142,6 +144,14 @@ byte customChar[8] = {
 
 // Initial setup
 void setup() {
+ for (unsigned long freq = 150; freq <= 15000; freq += 10) {  
+    toneAC(freq); // Play the frequency (150 Hz to 15 kHz in 10 Hz steps).
+    delay(1);     // Wait 1 ms so you can hear it.
+  }
+  toneAC(0); // Turn off toneAC, can also use noToneAC().
+
+
+
   // Loop through each buzzer and initialize the associated button and LED (in particular, set the pin mode)
   int team,player;
   for (team=0; team<numTeams; team++) {
@@ -151,7 +161,7 @@ void setup() {
       digitalWrite(buzzers[team][player].pinLED, LOW);
     }
   }
-  // Set the pin mode to OUTPUT for the speaker
+  
   pinMode(pinSpeaker, OUTPUT);
   // Set the pin mode to OUTPUT for the green LED
   pinGreenLED = whiteButton.pinLED;
@@ -251,7 +261,8 @@ void loop() {
     // turn on the LED associated with the buzzer which was activated
     digitalWrite(buzzers[teamBuzz][playerBuzz].pinLED, HIGH);
     // play a sound
-    tone(pinSpeaker, frequencySpeaker, durationSpeaker);
+    toneAC(frequencySpeaker,10,durationSpeaker,true);
+//    tone(pinSpeaker, frequencySpeaker, durationSpeaker);
     // read the value of the potentiometer to determine the duration of the delay before the reset
     // a value between 0 and 1023 is obtained
     valPot = analogRead(pinDelay);
