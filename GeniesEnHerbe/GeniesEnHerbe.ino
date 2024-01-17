@@ -5,10 +5,8 @@
 // Purpose:      Use Arduino Mega board to build a quiz game machine
 //               for the "Genies en Herbe" high-school game
 //               See https://en.wikipedia.org/wiki/G%C3%A9nies_en_herbe
-//               Now on github: https://github.com/vinfort/buzzer_geh
 //
 // Changelog:    2019-08-02 Initial version, Vincent Fortin (vincent.fortin@gmail.com)
-//               2024-01-16 8 buzzer version (has existed for a long time, log was not updated)
 //
 // Behaviour:    The quiz machine helps determine which player and which team answers the fastest
 //               to a question by pushing a buzzer. Each player has his own buzzer (push-button),
@@ -126,6 +124,21 @@ struct Button buzzers[numTeams][numPlayers] = {
 };
 struct Button whiteButton = {7,5,LOW,LOW,0};
 static int pinGreenLED; // will be set to the pinLED attribute of the white button
+//LCD demo code
+#include<Wire.h>
+#include<LiquidCrystal_I2C.h>
+LiquidCrystal_I2C lcd(0x27,20,4); //set the LCD address to 0x27 for a 16 chars and 2 line display
+
+byte customChar[8] = {
+	0b11111,
+	0b11111,
+	0b11111,
+	0b11111,
+	0b11111,
+	0b11111,
+	0b11111,
+	0b11111
+};
 
 // Initial setup
 void setup() {
@@ -145,10 +158,52 @@ void setup() {
   pinMode(pinGreenLED, OUTPUT);
   // Set the pin mode to INPUT for the white button
   pinMode(whiteButton.pinButton, INPUT_PULLUP);
+   //initialization of the LCD
+  lcd.init(); 
+  lcd.init();
+  lcd.backlight();
+  //creation of a full square character
+  lcd.createChar(0,customChar);
+   
   // Wait for the buttons to warm up! (don't know why they need time before they start working...)
-  delay(startupDelay); 
+  lcd.setCursor(0,0);
+  lcd.print("Merci d'attendre ");
+  lcd.print(startupDelay / 1000);
+  lcd.setCursor(4,1);
+  lcd.print(" secondes :)");
+  for(int i = 0; i < 5; i++)
+  {
+    if(i == 0)
+      lcd.setCursor(9,2);
+    else
+      lcd.setCursor(8,2);
+    lcd.print(20 * i);
+    lcd.print('%');
+    if (i != 0)
+    {
+      lcd.setCursor(i*4 - 4, 3);
+      for (int a = 0; a < 4; a++)
+        lcd.write(byte(0));
+    }
+    delay(startupDelay / 5);
+  }
+  lcd.setCursor(7,2);
+  lcd.print("100%");
+  lcd.setCursor(16,3);
+  for(int a = 0; a < 4; a++)
+    lcd.write(byte(0));
+  delay(100);
   // Light up the green LED to tell players that the quiz machine is working
   digitalWrite(pinGreenLED, HIGH);
+ 
+ // Display the ready light
+ lcd.clear();
+ for(int i = 0; i < 4; i ++)
+      for (int a = 0; a < 4; a ++)
+      {
+      lcd.setCursor(16 + i, a);
+      lcd.write(byte(0));
+      } 
 }
 
 void loop() {
@@ -166,9 +221,12 @@ void loop() {
   bool someoneBuzzed;
   // Timestamp used to determine how much time has passed since a buzzer was activated
   unsigned long timestamp;
+  //temporary variables for LCD display
+  int x = 0, y = 0;
   /* 
    *  Start of the loop
    */
+
   // Determine if somebody has buzzed by scanning all the buzzers
   someoneBuzzed = false;
   for (team=0; team<numTeams; team++) {
@@ -202,6 +260,21 @@ void loop() {
     if (valPot > 1000) {
       valPot = -1; // quiz machine must be reset manually by the referee
     }
+
+    //LCD display
+    lcd.clear();
+    y = team * 2;
+    if(team == 1)
+      x = player * 4;
+    else
+      x = abs(player - 3) * 4; //we need the player numbers inverted for this LCD setup, (team 1 are naturally inverted due to the wiring)
+    for (int i = 0; i < 4; i++)
+      for(int a = 0; a < 2; a++)
+        {
+         lcd.setCursor(x + i, y + a);
+         lcd.write(byte(0));
+        }
+
     // Obtain the delay by scaling the value read from the potentiometer by the maximum delay
     // Negative delays mean that the reset must be done manually
     delayReset = valPot*delayResetMax/1000;
@@ -219,6 +292,14 @@ void loop() {
     digitalWrite(pinGreenLED, HIGH);
     // Turn off the LED of the buzzer which was activated
     digitalWrite(buzzers[teamBuzz][playerBuzz].pinLED, LOW);
+    // Reset the LCD display
+    lcd.clear();
+    for(int i = 0; i < 4; i ++)
+      for (int a = 0; a < 4; a ++)
+      {
+      lcd.setCursor(16 + i, a);
+      lcd.write(byte(0));
+      }
   }
   // end of the loop: go back to the beginning!
 }
