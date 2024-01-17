@@ -5,8 +5,10 @@
 // Purpose:      Use Arduino Mega board to build a quiz game machine
 //               for the "Genies en Herbe" high-school game
 //               See https://en.wikipedia.org/wiki/G%C3%A9nies_en_herbe
+//               Now on github: https://github.com/vinfort/buzzer_geh
 //
 // Changelog:    2019-08-02 Initial version, Vincent Fortin (vincent.fortin@gmail.com)
+//               2024-01-16 8 buzzer version (has existed for a long time, log was not updated)
 //
 // Behaviour:    The quiz machine helps determine which player and which team answers the fastest
 //               to a question by pushing a buzzer. Each player has his own buzzer (push-button),
