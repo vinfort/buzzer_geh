@@ -2,11 +2,16 @@
 // Author:       Vincent Fortin
 // Contact:      vincent.fortin@gmail.com
 // License:      GNU GPL version 3 (https://www.gnu.org/licenses/gpl-3.0.html)
-// Purpose:      Use Arduino Mega board to build a quiz game machine
+// Purpose:      Use Arduino board to build a quiz game machine
 //               for the "Genies en Herbe" high-school game
 //               See https://en.wikipedia.org/wiki/G%C3%A9nies_en_herbe
 //
 // Changelog:    2019-08-02 Initial version, Vincent Fortin (vincent.fortin@gmail.com)
+//               2024-01-16 2-team, 8-buzzer version of the code commited to Github
+//                          (code developed shortly after the initial version)
+//               2024-01-17 This version of the code allows for a LCD screen to be
+//                          connected to the machine. LCD screen can be used in addition
+//                          to or in replacement of individual LED lights
 //
 // Behaviour:    The quiz machine helps determine which player and which team answers the fastest
 //               to a question by pushing a buzzer. Each player has his own buzzer (push-button),
@@ -19,13 +24,17 @@
 //               reset button. The duration of the timer is determined by a potentiometer. If
 //               the potentiometer is set to its maximum value, then the buzzer must be
 //               re-activated by the referee (there is no time limit).
+//               Instead of using LED lights to identify which player has pushed the buzzer,
+//               it is now possible to use an LCD screen. Both options are supported by the code
 //
 // Known issues: 1) The buttons take time to "warm up" (up to 35 seconds). A delay has been
 //                  added during startup to deal with this issue.
 //               2) Software button debouncing takes a long time (500 milliseconds)
 //               3) Buttons are polled in the same order each time, which will favor
 //                  a player over another if two players hit their buzzer at the same time
-//               4) Code has only been tester for two teams and one player per team so far
+//               4) Currently coded for Arduino Mega. Small modifications will be needed to
+//                  make it work with other boards. A version that also works on the Arduino
+//                  Nano is in development.
 
 /*
     This program is free software: you can redistribute it and/or modify
@@ -42,6 +51,18 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>
 */
 
+/****************/
+/* DEPENDENCIES */
+/****************/
+
+// Libraries required for SunFounder LCD screen
+#include <Wire.h>
+#include <LiquidCrystal_I2C.h>
+
+// Required in order to used the improved toneAC function
+// instead of the tone function to activate the speaker
+#include <toneAC.h>
+
 /*****************/
 /* CONFIGURATION */
 /*****************/
@@ -52,8 +73,8 @@
 
 // Configure the number of teams and number of players per team
 // Normally there are two teams and four players per team
-const int numTeams = 2;
-const int numPlayers = 4; // 4 players per team for the prototype
+const int numTeams = 2;   // 2 teams
+const int numPlayers = 4; // 4 players per team
 
 /*
  * Speaker
@@ -123,12 +144,12 @@ struct Button buzzers[numTeams][numPlayers] = {
     {29,39,LOW,LOW,0}
   }
 };
+
+// Configure the button used to reset the machin and the associated LED
 struct Button whiteButton = {7,5,LOW,LOW,0};
 static int pinGreenLED; // will be set to the pinLED attribute of the white button
-//LCD demo code
-#include<Wire.h>
-#include<LiquidCrystal_I2C.h>
-#include<toneAC.h>
+
+// Configure the LCD screen
 LiquidCrystal_I2C lcd(0x27,20,4); //set the LCD address to 0x27 for a 16 chars and 2 line display
 
 byte customChar[8] = {
@@ -144,13 +165,13 @@ byte customChar[8] = {
 
 // Initial setup
 void setup() {
+
+ // Make a little music to let people know the machine is booting
  for (unsigned long freq = 150; freq <= 15000; freq += 10) {  
     toneAC(freq); // Play the frequency (150 Hz to 15 kHz in 10 Hz steps).
     delay(1);     // Wait 1 ms so you can hear it.
   }
   toneAC(0); // Turn off toneAC, can also use noToneAC().
-
-
 
   // Loop through each buzzer and initialize the associated button and LED (in particular, set the pin mode)
   int team,player;
@@ -161,21 +182,29 @@ void setup() {
       digitalWrite(buzzers[team][player].pinLED, LOW);
     }
   }
-  
+
+  // Set the pin mode to OUTPUT for the speaker
+  // This line could be removed now that we are using toneAC instead of tone
+  // to activate the speaker because toneAC uses specific pins
   pinMode(pinSpeaker, OUTPUT);
+	
   // Set the pin mode to OUTPUT for the green LED
   pinGreenLED = whiteButton.pinLED;
   pinMode(pinGreenLED, OUTPUT);
+  
   // Set the pin mode to INPUT for the white button
   pinMode(whiteButton.pinButton, INPUT_PULLUP);
-   //initialization of the LCD
+  
+  // Initialization of the LCD
   lcd.init(); 
   lcd.init();
   lcd.backlight();
-  //creation of a full square character
+  // Creation of a full square character
   lcd.createChar(0,customChar);
    
   // Wait for the buttons to warm up! (don't know why they need time before they start working...)
+
+  // Use LCD to inform the users that the machine is warming up
   lcd.setCursor(0,0);
   lcd.print("Merci d'attendre ");
   lcd.print(startupDelay / 1000);
@@ -203,10 +232,11 @@ void setup() {
   for(int a = 0; a < 4; a++)
     lcd.write(byte(0));
   delay(100);
+	
   // Light up the green LED to tell players that the quiz machine is working
   digitalWrite(pinGreenLED, HIGH);
  
- // Display the ready light
+ // Display the ready light on the LCD as well
  lcd.clear();
  for(int i = 0; i < 4; i ++)
       for (int a = 0; a < 4; a ++)
@@ -233,6 +263,7 @@ void loop() {
   unsigned long timestamp;
   //temporary variables for LCD display
   int x = 0, y = 0;
+	
   /* 
    *  Start of the loop
    */
@@ -260,8 +291,8 @@ void loop() {
     digitalWrite(pinGreenLED, LOW);
     // turn on the LED associated with the buzzer which was activated
     digitalWrite(buzzers[teamBuzz][playerBuzz].pinLED, HIGH);
-    // play a sound
-    toneAC(frequencySpeaker,10,durationSpeaker,true);
+    // play a sound (now using toneAC instead of tone)
+    toneAC(frequencySpeaker, 10, durationSpeaker, true);
 //    tone(pinSpeaker, frequencySpeaker, durationSpeaker);
     // read the value of the potentiometer to determine the duration of the delay before the reset
     // a value between 0 and 1023 is obtained
