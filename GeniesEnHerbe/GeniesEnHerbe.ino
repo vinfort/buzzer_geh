@@ -12,6 +12,7 @@
 //               2024-01-17 This version of the code allows for a LCD screen to be
 //                          connected to the machine. LCD screen can be used in addition
 //                          to or in replacement of individual LED lights
+//               2024-01-31 Replace potentiometer with menu for selecting time before reset
 //
 // Behaviour:    The quiz machine helps determine which player and which team answers the fastest
 //               to a question by pushing a buzzer. Each player has his own buzzer (push-button),
@@ -27,11 +28,8 @@
 //               Instead of using LED lights to identify which player has pushed the buzzer,
 //               it is now possible to use an LCD screen. Both options are supported by the code
 //
-// Known issues: 1) The buttons take time to "warm up" (up to 35 seconds). A delay has been
+// Known issues: 1) The buttons take time to "warm up" (up to 30 seconds). A delay has been
 //                  added during startup to deal with this issue.
-//               2) Software button debouncing takes a long time (500 milliseconds)
-//               3) Buttons are polled in the same order each time, which will favor
-//                  a player over another if two players hit their buzzer at the same time
 //               4) Currently coded for Arduino Mega. Small modifications will be needed to
 //                  make it work with other boards. A version that also works on the Arduino
 //                  Nano is in development.
@@ -54,6 +52,8 @@
 /****************/
 /* DEPENDENCIES */
 /****************/
+
+#include <stdio.h>
 
 // Libraries required for SunFounder LCD screen
 #include <Wire.h>
@@ -90,25 +90,33 @@ const int durationSpeaker = 500; // milliseconds
  * Delay before reset
  */
 
+// Determine if we use potentiometer to determine the delay before a reset
+bool usePotentiometer = false;
+
 // Assign a pin number to the potentiometer used to determine the delay after a buzz before reset
-// and define maximum delay
+// and define maximum delay (pinDelay not used if usePotentiometer is false)
 
 const int pinDelay = 2;
 const unsigned long delayResetMax = 5000; // maximum delay in milliseconds (scaled by potentiometer read)
+
+// If we use the potentiometer delayReset will be recomputed based on the reading of the potentiometer
+int delayReset = delayResetMax;
+
+//
 
 /*
  * Delay before the quiz machine starts
  */
 
 // Startup delay to let the buttons warm up (I don't understand why this is needed!!!)
-const unsigned long startupDelay = 35000; // milliseconds
+const unsigned long startupDelay = 30000; // milliseconds
 
 /*
  * Minimum time during which a button must be pushed
  */
 
 // Debounce delay to filter out flickers of button states
-const unsigned long debounceDelay = 500;    // the debounce time for buttons in milliseconds
+const unsigned long debounceDelay = 50;    // the debounce time for buttons in milliseconds
 
 /* 
  * Attributes associated with each button / buzzer
@@ -131,22 +139,22 @@ struct Button {
 // Define each button by their pin numbers (for the button and the LED) and initial state
 struct Button buzzers[numTeams][numPlayers] = {
   {
-    {31,53,LOW,LOW,0},
-    {33,51,LOW,LOW,0},
-    {35,49,LOW,LOW,0},
-    {37,47,LOW,LOW,0}
+    {31,53,HIGH,LOW,0},
+    {33,51,HIGH,LOW,0},
+    {35,49,HIGH,LOW,0},
+    {37,47,HIGH,LOW,0}
   }
   ,
   {
-    {23,45,LOW,LOW,0},
-    {25,43,LOW,LOW,0},
-    {27,41,LOW,LOW,0},
-    {29,39,LOW,LOW,0}
+    {23,45,HIGH,LOW,0},
+    {25,43,HIGH,LOW,0},
+    {27,41,HIGH,LOW,0},
+    {29,39,HIGH,LOW,0}
   }
 };
 
 // Configure the button used to reset the machin and the associated LED
-struct Button whiteButton = {7,5,LOW,LOW,0};
+struct Button whiteButton = {7,5,HIGH,LOW,0};
 static int pinGreenLED; // will be set to the pinLED attribute of the white button
 
 // Configure the LCD screen
@@ -256,13 +264,13 @@ void loop() {
   int teamBuzz, playerBuzz;
   // Variables used to determine the delay before the reset of the buzzers
   int valPot;     // value of the potentiometer, between 0 and 1023
-  int delayReset; // delay obtained by rescaling the value of the potentiometer
   // Boolean indicating if a buzzer was activated
   bool someoneBuzzed;
   // Timestamp used to determine how much time has passed since a buzzer was activated
   unsigned long timestamp;
   //temporary variables for LCD display
   int x = 0, y = 0;
+  char message[21];
 	
   /* 
    *  Start of the loop
@@ -279,6 +287,45 @@ void loop() {
         playerBuzz = player;
         break;
       }
+      if (not usePotentiometer and readButtonState(whiteButton) == LOW) {
+        // White button is pushed: enter setup mode
+        while (true) {
+          whiteButton.buttonState = HIGH;
+          whiteButton.lastButtonState = HIGH;
+          lcd.clear();
+          lcd.setCursor(0,0);
+          lcd.print("Config. du delai");
+          lcd.setCursor(0,2);
+          if (delayReset > 0) {
+            sprintf(message,"Delai de %d sec.",int(delayReset/1000));
+          }
+          else {
+            sprintf(message,"Delai infini");
+          }
+          lcd.print(message);
+          delay(1000);
+          if (readButtonState(whiteButton) == LOW) {
+            lcd.setCursor(0,3);
+            sprintf(message,"Delai confirme");
+            lcd.print(message);
+            delay(2000);
+            break;
+          }
+          if (delayReset < 0) {
+            delayReset = 1000;
+          }
+          else if (delayReset < delayResetMax) {
+            delayReset += 1000;
+          }
+          else if (delayReset == delayResetMax) {
+            delayReset *= 2;
+          }
+          else if (delayReset > delayResetMax) {
+            delayReset = -1;
+          }
+        }
+        reset_lcd_display();
+      }
     }
     // A buzzer is activated: exit outer loop
     if (someoneBuzzed) {
@@ -293,16 +340,19 @@ void loop() {
     digitalWrite(buzzers[teamBuzz][playerBuzz].pinLED, HIGH);
     // play a sound (now using toneAC instead of tone)
     toneAC(frequencySpeaker, 10, durationSpeaker, true);
-//    tone(pinSpeaker, frequencySpeaker, durationSpeaker);
-    // read the value of the potentiometer to determine the duration of the delay before the reset
-    // a value between 0 and 1023 is obtained
-    valPot = analogRead(pinDelay);
-    // If the value read is higher than 1000, set it to minus one.
-    // This value will be used as a flag meaning that the white button must be pushed to reset the quiz machine.
-    if (valPot > 1000) {
-      valPot = -1; // quiz machine must be reset manually by the referee
+    // Obtain the delay by scaling the value read from the potentiometer by the maximum delay
+    // Negative delays mean that the reset must be done manually
+    if (usePotentiometer) {
+      // read the value of the potentiometer to determine the duration of the delay before the reset
+      // a value between 0 and 1023 is obtained
+      valPot = analogRead(pinDelay);
+      // If the value read is higher than 1000, set it to minus one.
+      // This value will be used as a flag meaning that the white button must be pushed to reset the quiz machine.
+      if (valPot > 1000) {
+        valPot = -1; // quiz machine must be reset manually by the referee
+      }
+      delayReset = valPot*delayResetMax/1000;
     }
-
     //LCD display
     lcd.clear();
     y = team * 2;
@@ -317,15 +367,15 @@ void loop() {
          lcd.write(byte(0));
         }
 
-    // Obtain the delay by scaling the value read from the potentiometer by the maximum delay
-    // Negative delays mean that the reset must be done manually
-    delayReset = valPot*delayResetMax/1000;
     // Wait for the end of the delay before doing a reset
     timestamp = millis();
     while ((delayReset < 0) || millis() - timestamp < delayReset) {
       // The delay has not ended: check if white button is pushed by the referee
       if (readButtonState(whiteButton) == LOW) {
         // White button is pushed: reset the quiz machine before the end of the delay
+        while (readButtonState(whiteButton) == LOW) {
+          delay(debounceDelay);
+        }
         break;
       }  
     }
@@ -335,6 +385,12 @@ void loop() {
     // Turn off the LED of the buzzer which was activated
     digitalWrite(buzzers[teamBuzz][playerBuzz].pinLED, LOW);
     // Reset the LCD display
+    reset_lcd_display();
+  }
+  // end of the loop: go back to the beginning!
+}
+
+void reset_lcd_display(){
     lcd.clear();
     for(int i = 0; i < 4; i ++)
       for (int a = 0; a < 4; a ++)
@@ -342,8 +398,6 @@ void loop() {
       lcd.setCursor(16 + i, a);
       lcd.write(byte(0));
       }
-  }
-  // end of the loop: go back to the beginning!
 }
 
 // Read the state of a button (ensure that the button is pushed for a long enough time to deal with bouncing)
