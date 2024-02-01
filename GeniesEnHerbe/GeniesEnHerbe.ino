@@ -13,6 +13,9 @@
 //                          connected to the machine. LCD screen can be used in addition
 //                          to or in replacement of individual LED lights
 //               2024-01-31 Replace potentiometer with menu for selecting time before reset
+//               2024-02-01 Change pin numbers to be able to use an Arduino Nano
+//                          (if you want to light up a LED when a player pushes a
+//                          buzzer you need to use an Arduino Mega or better)
 //
 // Behaviour:    The quiz machine helps determine which player and which team answers the fastest
 //               to a question by pushing a buzzer. Each player has his own buzzer (push-button),
@@ -30,10 +33,29 @@
 //
 // Known issues: 1) The buttons take time to "warm up" (up to 30 seconds). A delay has been
 //                  added during startup to deal with this issue.
-//               4) Currently coded for Arduino Mega. Small modifications will be needed to
-//                  make it work with other boards. A version that also works on the Arduino
-//                  Nano is in development.
-
+//               2) Currently tested only with Arduino Mega
+//
+// How the pins should be connected:
+//
+// Buzzers for Team 1:
+// Player 1: one wire on pin 5, the other on ground
+// Player 2: one wire on pin 4, the other on ground
+// Player 3: one wire on pin 3, the other on ground
+// Player 4: one wire on pin 2, the other on ground
+//
+// Buzzers for Team 2:
+// Player 1: one wire on pin 6, the other on ground
+// Player 2: one wire on pin 7, the other on ground
+// Player 3: one wire on pin 8, the other on ground
+// Player 4: one wire on pin 9, the other on ground
+//
+// Reset button: one wire on pin 10, the other on ground
+//
+// LCD screen:
+// Connect the four wires to ground, +5V, SDA and SCL
+// On Arduino Nano use A4 for SDA and A5 for SCL
+//
+// Speaker: wires on pins 11 and 12
 /*
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -101,7 +123,7 @@ const unsigned long delayResetMax = 5000; // maximum delay in milliseconds (scal
 
 // If we use the potentiometer delayReset will be recomputed based on the reading of the potentiometer
 int delayReset = delayResetMax;
-int delayReset2;
+int delayReset2; // 2 x delayReset (used to adjust delayReset through the config menu)
 
 //
 
@@ -289,43 +311,52 @@ void loop() {
         break;
       }
       if (not usePotentiometer and readButtonState(whiteButton) == LOW) {
-        // White button is pushed: enter setup mode
-        delayReset2 = delayReset*2;
-        while (true) {
-          whiteButton.buttonState = HIGH;
-          whiteButton.lastButtonState = HIGH;
-          lcd.clear();
-          lcd.setCursor(0,0);
-          lcd.print("Config. du delai");
-          lcd.setCursor(0,3);
-          lcd.print("Clic pour confirmer");
-          lcd.setCursor(0,2);
-          if (delayReset > 0) {
-            sprintf(message,"Delai de %d sec.",int(delayReset/1000));
-          }
-          else {
-            sprintf(message,"Delai infini");
-          }
-          lcd.print(message);
-          delay(1000);
-          if (readButtonState(whiteButton) == LOW) {
+        delay(1000);
+        if (readButtonState(whiteButton) == LOW) {
+        // White button is pushed for a long time: enter setup mode
+          delayReset2 = delayReset*2;
+          while (true) {
+            whiteButton.buttonState = HIGH;
+            whiteButton.lastButtonState = HIGH;
+            // Print a message to tell the user that he's entering setup mode
+            lcd.clear();
+            lcd.setCursor(0,0);
+            lcd.print("Config. du delai");
             lcd.setCursor(0,3);
-            sprintf(message,"Delai confirme      ");
+            lcd.print("Clic pour confirmer");
+            lcd.setCursor(0,2);
+            if (delayReset > 0) {
+              sprintf(message,"Delai de %d sec.",int(delayReset/1000));
+            }
+            else {
+              sprintf(message,"Delai infini");
+            }
             lcd.print(message);
-            delay(2000);
-            break;
+            delay(1000);
+            // Exit setup mode if the user presses again the button
+            if (readButtonState(whiteButton) == LOW) {
+              lcd.setCursor(0,3);
+              sprintf(message,"Delai confirme      ");
+              lcd.print(message);
+              delay(2000);
+              break;
+            }
+            // Each time we go through this part of the loop we change delayReset
+            // Adding 1 sec if it is lower than delayReset2 (2 x initial value of delayReset)
+            // Then once we reach delayReset2 we set it to -1 (no reset) then back to 1 sec
+            // This continues until the user exits the setup by pressing the button again
+            if (delayReset < 0) {
+              delayReset = 1000;
+            }
+            else if (delayReset < delayReset2) {
+              delayReset += 1000;
+            }
+            else if (delayReset >= delayReset2) {
+              delayReset = -1;
+            }
           }
-          if (delayReset < 0) {
-            delayReset = 1000;
-          }
-          else if (delayReset < delayReset2) {
-            delayReset += 1000;
-          }
-          else if (delayReset >= delayReset2) {
-            delayReset = -1;
-          }
+          reset_lcd_display();
         }
-        reset_lcd_display();
       }
     }
     // A buzzer is activated: exit outer loop
