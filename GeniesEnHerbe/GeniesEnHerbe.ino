@@ -101,6 +101,7 @@ const unsigned long delayResetMax = 5000; // maximum delay in milliseconds (scal
 
 // If we use the potentiometer delayReset will be recomputed based on the reading of the potentiometer
 int delayReset = delayResetMax;
+int delayReset2;
 
 //
 
@@ -289,12 +290,15 @@ void loop() {
       }
       if (not usePotentiometer and readButtonState(whiteButton) == LOW) {
         // White button is pushed: enter setup mode
+        delayReset2 = delayReset*2;
         while (true) {
           whiteButton.buttonState = HIGH;
           whiteButton.lastButtonState = HIGH;
           lcd.clear();
           lcd.setCursor(0,0);
           lcd.print("Config. du delai");
+          lcd.setCursor(0,3);
+          lcd.print("Clic pour confirmer");
           lcd.setCursor(0,2);
           if (delayReset > 0) {
             sprintf(message,"Delai de %d sec.",int(delayReset/1000));
@@ -306,7 +310,7 @@ void loop() {
           delay(1000);
           if (readButtonState(whiteButton) == LOW) {
             lcd.setCursor(0,3);
-            sprintf(message,"Delai confirme");
+            sprintf(message,"Delai confirme      ");
             lcd.print(message);
             delay(2000);
             break;
@@ -314,13 +318,10 @@ void loop() {
           if (delayReset < 0) {
             delayReset = 1000;
           }
-          else if (delayReset < delayResetMax) {
+          else if (delayReset < delayReset2) {
             delayReset += 1000;
           }
-          else if (delayReset == delayResetMax) {
-            delayReset *= 2;
-          }
-          else if (delayReset > delayResetMax) {
+          else if (delayReset >= delayReset2) {
             delayReset = -1;
           }
         }
