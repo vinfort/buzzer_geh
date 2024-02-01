@@ -140,22 +140,22 @@ struct Button {
 // Define each button by their pin numbers (for the button and the LED) and initial state
 struct Button buzzers[numTeams][numPlayers] = {
   {
-    {31,53,HIGH,LOW,0},
-    {33,51,HIGH,LOW,0},
-    {35,49,HIGH,LOW,0},
-    {37,47,HIGH,LOW,0}
+    {5,53,HIGH,LOW,0},
+    {4,51,HIGH,LOW,0},
+    {3,49,HIGH,LOW,0},
+    {2,47,HIGH,LOW,0}
   }
   ,
   {
-    {23,45,HIGH,LOW,0},
-    {25,43,HIGH,LOW,0},
-    {27,41,HIGH,LOW,0},
-    {29,39,HIGH,LOW,0}
+    {6,45,HIGH,LOW,0},
+    {7,43,HIGH,LOW,0},
+    {8,41,HIGH,LOW,0},
+    {9,39,HIGH,LOW,0}
   }
 };
 
 // Configure the button used to reset the machin and the associated LED
-struct Button whiteButton = {7,5,HIGH,LOW,0};
+struct Button whiteButton = {10,13,HIGH,LOW,0};
 static int pinGreenLED; // will be set to the pinLED attribute of the white button
 
 // Configure the LCD screen
