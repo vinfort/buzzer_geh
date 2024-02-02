@@ -16,24 +16,21 @@
 //               2024-02-01 Change pin numbers to be able to use an Arduino Nano
 //                          (if you want to light up a LED when a player pushes a
 //                          buzzer you need to use an Arduino Mega or better)
+//               2024-02-02 Adapted and simplified the code for Arduino Nano
+//                          (now tested on Nano)
 //
 // Behaviour:    The quiz machine helps determine which player and which team answers the fastest
-//               to a question by pushing a buzzer. Each player has his own buzzer (push-button),
-//               to which a LED is associated. The purpose of the machine is to determine which
-//               player answers first, by lighting up the LED associated with the buzzer being
-//               pushed first, and by making a sound. When a buzzer is pushed, the other buzzers
-//               are deactivated. The buzzers can be re-activated by a reset button operated by
-//               the referee. When the buzzers are activated, a green light is lit. There is a
+//               to a question by pushing a buzzer. Each player has his own buzzer (push-button).
+//               The purpose of the machine is to determine which player answers first. When a
+//               buzzer is pushed, the other buzzers are deactivated. The buzzers can be
+//               re-activated by a reset button operated by the referee. There is a
 //               timer after which the buzzers are re-activated if the referee does not push the
-//               reset button. The duration of the timer is determined by a potentiometer. If
-//               the potentiometer is set to its maximum value, then the buzzer must be
-//               re-activated by the referee (there is no time limit).
-//               Instead of using LED lights to identify which player has pushed the buzzer,
-//               it is now possible to use an LCD screen. Both options are supported by the code
+//               reset button. The duration of the timer is determined via a configuration menu.
+//               An LCD screen is used to identify which player has buzzed.
 //
 // Known issues: 1) The buttons take time to "warm up" (up to 30 seconds). A delay has been
 //                  added during startup to deal with this issue.
-//               2) Currently tested only with Arduino Mega
+//               2) Currently tested only with Arduino Mega and Arduino Nano
 //
 // How the pins should be connected:
 //
@@ -47,15 +44,20 @@
 // Player 1: one wire on pin 6, the other on ground
 // Player 2: one wire on pin 7, the other on ground
 // Player 3: one wire on pin 8, the other on ground
-// Player 4: one wire on pin 9, the other on ground
+// Player 4: one wire on pin 9, the other on ground (Arduino Mega)
+//           one wire on pin 11, the other on ground (Arduino Nano)
 //
-// Reset button: one wire on pin 10, the other on ground
+// Reset button:
+// one wire on pin 10, the other on ground (Arduino Mega)
+// one wire on pin 12, the other on ground (Arduino Nano)
 //
 // LCD screen:
 // Connect the four wires to ground, +5V, SDA and SCL
 // On Arduino Nano use A4 for SDA and A5 for SCL
 //
-// Speaker: wires on pins 11 and 12
+// Speaker:
+// pins 11 and 12 for Arduino Mega
+// pins 9 and 10 for Arduino Nano
 /*
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -90,6 +92,23 @@
 /*****************/
 
 /*
+ * Constants that need to be adapted depending on what board is used
+ */
+
+// Because the toneAC function requires dedicated pins that vary
+// from board to board, we need to adjust other pins depending on the board we use
+
+// Arduino Mega
+/*
+const int pin_team2player4 = 9;
+const int pin_reset = 10;
+*/
+
+// Arduino Nano
+const int pin_team2player4 = 11;
+const int pin_reset = 12;
+
+/*
  * Number of teams and number of players per team
  */
 
@@ -102,9 +121,6 @@ const int numPlayers = 4; // 4 players per team
  * Speaker
  */
 
-// Assign a pin number to the speaker and configure the sound
-const int pinSpeaker = 11;
-const int pinSpeaker2 = 12;
 const int frequencySpeaker = 440; // Hz
 const int durationSpeaker = 500; // milliseconds
 
@@ -112,17 +128,7 @@ const int durationSpeaker = 500; // milliseconds
  * Delay before reset
  */
 
-// Determine if we use potentiometer to determine the delay before a reset
-bool usePotentiometer = false;
-
-// Assign a pin number to the potentiometer used to determine the delay after a buzz before reset
-// and define maximum delay (pinDelay not used if usePotentiometer is false)
-
-const int pinDelay = 2;
-const unsigned long delayResetMax = 5000; // maximum delay in milliseconds (scaled by potentiometer read)
-
-// If we use the potentiometer delayReset will be recomputed based on the reading of the potentiometer
-int delayReset = delayResetMax;
+int delayReset = 3000; // maximum delay in milliseconds
 int delayReset2; // 2 x delayReset (used to adjust delayReset through the config menu)
 
 //
@@ -139,7 +145,7 @@ const unsigned long startupDelay = 30000; // milliseconds
  */
 
 // Debounce delay to filter out flickers of button states
-const unsigned long debounceDelay = 50;    // the debounce time for buttons in milliseconds
+const unsigned long debounceDelay = 500;    // the debounce time for buttons in milliseconds
 
 /* 
  * Attributes associated with each button / buzzer
@@ -148,7 +154,6 @@ const unsigned long debounceDelay = 50;    // the debounce time for buttons in m
 // Define structure for standard button
 struct Button {
   int pinButton;        // pin number of the pushbutton
-  int pinLED;           // pin number of the associated LED
   int buttonState;      // last stable state of the button (after filtering)
   int lastButtonState;  // last known state of the button (including flickers)
   int lastDebounceTime; // last time the button flickered (for debounce purposes)
@@ -162,23 +167,22 @@ struct Button {
 // Define each button by their pin numbers (for the button and the LED) and initial state
 struct Button buzzers[numTeams][numPlayers] = {
   {
-    {5,53,HIGH,LOW,0},
-    {4,51,HIGH,LOW,0},
-    {3,49,HIGH,LOW,0},
-    {2,47,HIGH,LOW,0}
+    {5,HIGH,LOW,0},
+    {4,HIGH,LOW,0},
+    {3,HIGH,LOW,0},
+    {2,HIGH,LOW,0}
   }
   ,
   {
-    {6,45,HIGH,LOW,0},
-    {7,43,HIGH,LOW,0},
-    {8,41,HIGH,LOW,0},
-    {9,39,HIGH,LOW,0}
+    {6,HIGH,LOW,0},
+    {7,HIGH,LOW,0},
+    {8,HIGH,LOW,0},
+    {pin_team2player4,HIGH,LOW,0}
   }
 };
 
-// Configure the button used to reset the machin and the associated LED
-struct Button whiteButton = {10,13,HIGH,LOW,0};
-static int pinGreenLED; // will be set to the pinLED attribute of the white button
+// Configure the button used to reset the machine
+struct Button whiteButton = {pin_reset,HIGH,LOW,0};
 
 // Configure the LCD screen
 LiquidCrystal_I2C lcd(0x27,20,4); //set the LCD address to 0x27 for a 16 chars and 2 line display
@@ -204,25 +208,14 @@ void setup() {
   }
   toneAC(0); // Turn off toneAC, can also use noToneAC().
 
-  // Loop through each buzzer and initialize the associated button and LED (in particular, set the pin mode)
+  // Loop through each buzzer and initialize the associated button
   int team,player;
   for (team=0; team<numTeams; team++) {
     for (player=0; player<numPlayers; player++) {
-      pinMode(buzzers[team][player].pinLED, OUTPUT);
       pinMode(buzzers[team][player].pinButton, INPUT_PULLUP);
-      digitalWrite(buzzers[team][player].pinLED, LOW);
     }
   }
 
-  // Set the pin mode to OUTPUT for the speaker
-  // This line could be removed now that we are using toneAC instead of tone
-  // to activate the speaker because toneAC uses specific pins
-  pinMode(pinSpeaker, OUTPUT);
-	
-  // Set the pin mode to OUTPUT for the green LED
-  pinGreenLED = whiteButton.pinLED;
-  pinMode(pinGreenLED, OUTPUT);
-  
   // Set the pin mode to INPUT for the white button
   pinMode(whiteButton.pinButton, INPUT_PULLUP);
   
@@ -263,10 +256,7 @@ void setup() {
   for(int a = 0; a < 4; a++)
     lcd.write(byte(0));
   delay(100);
-	
-  // Light up the green LED to tell players that the quiz machine is working
-  digitalWrite(pinGreenLED, HIGH);
- 
+	 
  // Display the ready light on the LCD as well
  lcd.clear();
  for(int i = 0; i < 4; i ++)
@@ -310,14 +300,12 @@ void loop() {
         playerBuzz = player;
         break;
       }
-      if (not usePotentiometer and readButtonState(whiteButton) == LOW) {
+      if (readButtonState(whiteButton) == LOW) {
         delay(1000);
         if (readButtonState(whiteButton) == LOW) {
         // White button is pushed for a long time: enter setup mode
           delayReset2 = delayReset*2;
           while (true) {
-            whiteButton.buttonState = HIGH;
-            whiteButton.lastButtonState = HIGH;
             // Print a message to tell the user that he's entering setup mode
             lcd.clear();
             lcd.setCursor(0,0);
@@ -366,25 +354,8 @@ void loop() {
   }
   // Do this when someone activates his buzzer
   if (someoneBuzzed) {
-    // turn off the green LED
-    digitalWrite(pinGreenLED, LOW);
-    // turn on the LED associated with the buzzer which was activated
-    digitalWrite(buzzers[teamBuzz][playerBuzz].pinLED, HIGH);
     // play a sound (now using toneAC instead of tone)
     toneAC(frequencySpeaker, 10, durationSpeaker, true);
-    // Obtain the delay by scaling the value read from the potentiometer by the maximum delay
-    // Negative delays mean that the reset must be done manually
-    if (usePotentiometer) {
-      // read the value of the potentiometer to determine the duration of the delay before the reset
-      // a value between 0 and 1023 is obtained
-      valPot = analogRead(pinDelay);
-      // If the value read is higher than 1000, set it to minus one.
-      // This value will be used as a flag meaning that the white button must be pushed to reset the quiz machine.
-      if (valPot > 1000) {
-        valPot = -1; // quiz machine must be reset manually by the referee
-      }
-      delayReset = valPot*delayResetMax/1000;
-    }
     //LCD display
     lcd.clear();
     y = team * 2;
@@ -412,11 +383,6 @@ void loop() {
       }  
     }
     // End of the delay or white button pushed: reset the quiz machine
-    // Turn on the green LED
-    digitalWrite(pinGreenLED, HIGH);
-    // Turn off the LED of the buzzer which was activated
-    digitalWrite(buzzers[teamBuzz][playerBuzz].pinLED, LOW);
-    // Reset the LCD display
     reset_lcd_display();
   }
   // end of the loop: go back to the beginning!
