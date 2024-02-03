@@ -121,7 +121,9 @@ const int numPlayers = 4; // 4 players per team
  * Speaker
  */
 
+// Frequency of the speaker for team 1, will be divided in half for team 2
 const int frequencySpeaker = 440; // Hz
+
 const int durationSpeaker = 500; // milliseconds
 
 /*
@@ -355,7 +357,7 @@ void loop() {
   // Do this when someone activates his buzzer
   if (someoneBuzzed) {
     // play a sound (now using toneAC instead of tone)
-    toneAC(frequencySpeaker, 10, durationSpeaker, true);
+    toneAC(frequencySpeaker/(team+1), 10, durationSpeaker, true);
     //LCD display
     lcd.clear();
     y = team * 2;
