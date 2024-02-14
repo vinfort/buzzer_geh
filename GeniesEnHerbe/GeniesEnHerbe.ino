@@ -18,6 +18,8 @@
 //                          buzzer you need to use an Arduino Mega or better)
 //               2024-02-02 Adapted and simplified the code for Arduino Nano
 //                          (now tested on Nano)
+//               2024-02-14 Now playing a different sound for each player (C, D, E, F)
+//                          This makes the LCD screen optional.
 //
 // Behaviour:    The quiz machine helps determine which player and which team answers the fastest
 //               to a question by pushing a buzzer. Each player has his own buzzer (push-button).
@@ -121,9 +123,6 @@ const int numPlayers = 4; // 4 players per team
  * Speaker
  */
 
-// Frequency of the speaker for team 1, will be divided in half for team 2
-const int frequencySpeaker = 440; // Hz
-
 const int durationSpeaker = 500; // milliseconds
 
 /*
@@ -155,10 +154,11 @@ const unsigned long debounceDelay = 500;    // the debounce time for buttons in 
 
 // Define structure for standard button
 struct Button {
-  int pinButton;        // pin number of the pushbutton
-  int buttonState;      // last stable state of the button (after filtering)
-  int lastButtonState;  // last known state of the button (including flickers)
-  int lastDebounceTime; // last time the button flickered (for debounce purposes)
+  int pinButton;           // pin number of the pushbutton
+  int buttonState;         // last stable state of the button (after filtering)
+  int lastButtonState;     // last known state of the button (including flickers)
+  int lastDebounceTime;    // last time the button flickered (for debounce purposes)
+  unsigned long frequency; // frequency of the sound played when the button is pushed
 }; 
 
 /*
@@ -169,17 +169,17 @@ struct Button {
 // Define each button by their pin numbers (for the button and the LED) and initial state
 struct Button buzzers[numTeams][numPlayers] = {
   {
-    {5,HIGH,LOW,0},
-    {4,HIGH,LOW,0},
-    {3,HIGH,LOW,0},
-    {2,HIGH,LOW,0}
+    {5,HIGH,LOW,0,262},
+    {4,HIGH,LOW,0,294},
+    {3,HIGH,LOW,0,330},
+    {2,HIGH,LOW,0,349}
   }
   ,
   {
-    {6,HIGH,LOW,0},
-    {7,HIGH,LOW,0},
-    {8,HIGH,LOW,0},
-    {pin_team2player4,HIGH,LOW,0}
+    {6,HIGH,LOW,0,523},
+    {7,HIGH,LOW,0,587},
+    {8,HIGH,LOW,0,659},
+    {pin_team2player4,HIGH,LOW,0,698}
   }
 };
 
@@ -357,7 +357,7 @@ void loop() {
   // Do this when someone activates his buzzer
   if (someoneBuzzed) {
     // play a sound (now using toneAC instead of tone)
-    toneAC(frequencySpeaker/(team+1), 10, durationSpeaker, true);
+    toneAC(buzzers[teamBuzz][playerBuzz], 10, durationSpeaker, true);
     //LCD display
     lcd.clear();
     y = team * 2;
