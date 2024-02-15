@@ -129,7 +129,7 @@ const int durationSpeaker = 500; // milliseconds
  * Delay before reset
  */
 
-int delayReset = 3000; // maximum delay in milliseconds
+int delayReset = 5000; // maximum delay in milliseconds
 int delayReset2; // 2 x delayReset (used to adjust delayReset through the config menu)
 
 //
@@ -146,7 +146,7 @@ const unsigned long startupDelay = 30000; // milliseconds
  */
 
 // Debounce delay to filter out flickers of button states
-const unsigned long debounceDelay = 500;    // the debounce time for buttons in milliseconds
+const unsigned long debounceDelay = 50;    // the debounce time for buttons in milliseconds
 
 /* 
  * Attributes associated with each button / buzzer
@@ -357,7 +357,7 @@ void loop() {
   // Do this when someone activates his buzzer
   if (someoneBuzzed) {
     // play a sound (now using toneAC instead of tone)
-    toneAC(buzzers[teamBuzz][playerBuzz], 10, durationSpeaker, true);
+    toneAC(buzzers[teamBuzz][playerBuzz].frequency, 10, durationSpeaker, true);
     //LCD display
     lcd.clear();
     y = team * 2;
