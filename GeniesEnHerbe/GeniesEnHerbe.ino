@@ -158,7 +158,7 @@ struct Button {
   int buttonState;         // last stable state of the button (after filtering)
   int lastButtonState;     // last known state of the button (including flickers)
   int lastDebounceTime;    // last time the button flickered (for debounce purposes)
-  unsigned long frequency; // frequency of the sound played when the button is pushed
+  float frequency; // frequency of the sound played when the button is pushed
 }; 
 
 /*
@@ -169,17 +169,17 @@ struct Button {
 // Define each button by their pin numbers (for the button and the LED) and initial state
 struct Button buzzers[numTeams][numPlayers] = {
   {
-    {5,HIGH,LOW,0,262},
-    {4,HIGH,LOW,0,294},
-    {3,HIGH,LOW,0,330},
-    {2,HIGH,LOW,0,349}
+    {5,HIGH,LOW,0,130.8},
+    {4,HIGH,LOW,0,146.8},
+    {3,HIGH,LOW,0,155.6},
+    {2,HIGH,LOW,0,164.8}
   }
   ,
   {
-    {6,HIGH,LOW,0,523},
-    {7,HIGH,LOW,0,587},
-    {8,HIGH,LOW,0,659},
-    {pin_team2player4,HIGH,LOW,0,698}
+    {6,HIGH,LOW,0,174.6},
+    {7,HIGH,LOW,0,196},
+    {8,HIGH,LOW,0,220},
+    {pin_team2player4,HIGH,LOW,0,233.1}
   }
 };
 
@@ -356,8 +356,6 @@ void loop() {
   }
   // Do this when someone activates his buzzer
   if (someoneBuzzed) {
-    // play a sound (now using toneAC instead of tone)
-    toneAC(buzzers[teamBuzz][playerBuzz].frequency, 10, durationSpeaker, true);
     //LCD display
     lcd.clear();
     y = team * 2;
@@ -371,7 +369,14 @@ void loop() {
          lcd.setCursor(x + i, y + a);
          lcd.write(byte(0));
         }
-
+    // play a sound (now using toneAC instead of tone
+     if (team == 1)
+      playerBuzz = abs(player - 3);
+    for (int i = 0; i <= playerBuzz; i++) //plays a sequence of x sounds depending on which player has buzzed
+      {
+        toneAC(buzzers[teamBuzz][i].frequency, 2, durationSpeaker, false);
+        delay(100);
+      } 
     // Wait for the end of the delay before doing a reset
     timestamp = millis();
     while ((delayReset < 0) || millis() - timestamp < delayReset) {
