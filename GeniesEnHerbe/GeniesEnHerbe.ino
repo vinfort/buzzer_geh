@@ -146,7 +146,7 @@ const unsigned long startupDelay = 30000; // milliseconds
  */
 
 // Debounce delay to filter out flickers of button states
-const unsigned long debounceDelay = 50;    // the debounce time for buttons in milliseconds
+const unsigned long debounceDelay = 100;    // the debounce time for buttons in milliseconds
 
 /* 
  * Attributes associated with each button / buzzer
@@ -169,17 +169,17 @@ struct Button {
 // Define each button by their pin numbers (for the button and the LED) and initial state
 struct Button buzzers[numTeams][numPlayers] = {
   {
-    {5,HIGH,LOW,0,262},
-    {4,HIGH,LOW,0,294},
-    {3,HIGH,LOW,0,330},
-    {2,HIGH,LOW,0,349}
+    {5,HIGH,LOW,0,100},
+    {4,HIGH,LOW,0,200},
+    {3,HIGH,LOW,0,400},
+    {2,HIGH,LOW,0,800}
   }
   ,
   {
-    {6,HIGH,LOW,0,523},
-    {7,HIGH,LOW,0,587},
-    {8,HIGH,LOW,0,659},
-    {pin_team2player4,HIGH,LOW,0,698}
+    {6,HIGH,LOW,0,1600},
+    {7,HIGH,LOW,0,3200},
+    {8,HIGH,LOW,0,6400},
+    {pin_team2player4,HIGH,LOW,0,12800}
   }
 };
 
@@ -356,8 +356,6 @@ void loop() {
   }
   // Do this when someone activates his buzzer
   if (someoneBuzzed) {
-    // play a sound (now using toneAC instead of tone)
-    toneAC(buzzers[teamBuzz][playerBuzz].frequency, 10, durationSpeaker, true);
     //LCD display
     lcd.clear();
     y = team * 2;
@@ -371,7 +369,8 @@ void loop() {
          lcd.setCursor(x + i, y + a);
          lcd.write(byte(0));
         }
-
+    // play a sound (now using toneAC instead of tone)
+    toneAC(buzzers[teamBuzz][playerBuzz].frequency, 10, durationSpeaker, true);
     // Wait for the end of the delay before doing a reset
     timestamp = millis();
     while ((delayReset < 0) || millis() - timestamp < delayReset) {
