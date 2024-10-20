@@ -169,17 +169,17 @@ struct Button {
 // Define each button by their pin numbers (for the button and the LED) and initial state
 struct Button buzzers[numTeams][numPlayers] = {
   {
-    {5,HIGH,LOW,0,100},
-    {4,HIGH,LOW,0,200},
+    {5,HIGH,LOW,0,400},
+    {4,HIGH,LOW,0,400},
     {3,HIGH,LOW,0,400},
-    {2,HIGH,LOW,0,800}
+    {2,HIGH,LOW,0,400}
   }
   ,
   {
     {6,HIGH,LOW,0,1600},
-    {7,HIGH,LOW,0,3200},
-    {8,HIGH,LOW,0,6400},
-    {pin_team2player4,HIGH,LOW,0,12800}
+    {7,HIGH,LOW,0,1600},
+    {8,HIGH,LOW,0,1600},
+    {pin_team2player4,HIGH,LOW,0,1600}
   }
 };
 
@@ -370,7 +370,11 @@ void loop() {
          lcd.write(byte(0));
         }
     // play a sound (now using toneAC instead of tone)
-    toneAC(buzzers[teamBuzz][playerBuzz].frequency, 10, durationSpeaker, true);
+    for (int i = 0; i <= player; i++) 
+    {
+      toneAC(buzzers[teamBuzz][playerBuzz].frequency, 10, durationSpeaker / (2 * (5 - player)), false);
+      delay(durationSpeaker / (2 * (5 - player)));
+    }
     // Wait for the end of the delay before doing a reset
     timestamp = millis();
     while ((delayReset < 0) || millis() - timestamp < delayReset) {
